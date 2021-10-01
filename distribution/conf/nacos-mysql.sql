@@ -1,3 +1,7 @@
+CREATE DATABASE `nacos_devtest`; /*!40100 DEFAULT CHARACTER SET utf8mb4 */;
+USE `nacos_devtest`;
+
+
 /******************************************/
 /*   数据库全名 = nacos_config   */
 /*   表名称 = config_info   */

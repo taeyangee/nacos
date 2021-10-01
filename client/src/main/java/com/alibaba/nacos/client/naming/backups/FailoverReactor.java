@@ -36,7 +36,7 @@ import static com.alibaba.nacos.client.utils.LogUtils.NAMING_LOGGER;
 /**
  * @author nkorange
  */
-public class FailoverReactor {
+public class FailoverReactor { /* 关于故障转移的使用姿势： failover是一种容灾备份，是自己手动创建写入的。 https://github.com/alibaba/nacos/issues/6397*/
 
     private String failoverDir;
 
@@ -44,7 +44,7 @@ public class FailoverReactor {
 
     public FailoverReactor(HostReactor hostReactor, String cacheDir) {
         this.hostReactor = hostReactor;
-        this.failoverDir = cacheDir + "/failover";
+        this.failoverDir = cacheDir + "/failover";  /* /nacos/naming/c5a7ecbf-8be3-487b-b090-0772e6a26c64/failover/ */
         this.init();
     }
 
@@ -65,13 +65,13 @@ public class FailoverReactor {
     public void init() {
 
         executorService.scheduleWithFixedDelay(new SwitchRefresher(), 0L, 5000L, TimeUnit.MILLISECONDS);
-
+        /* HostReactor中缓存的，每个ServiceInfo落盘一个文件。 周期30min */
         executorService.scheduleWithFixedDelay(new DiskFileWriter(), 30, DAY_PERIOD_MINUTES, TimeUnit.MINUTES);
 
         // backup file on startup if failover directory is empty.
         executorService.schedule(new Runnable() {
             @Override
-            public void run() {
+            public void run() { /* 启机10s后执行。不同的是， 没有这些文件才写 */
                 try {
                     File cacheDir = new File(failoverDir);
 
@@ -225,7 +225,7 @@ public class FailoverReactor {
                     continue;
                 }
 
-                DiskCache.write(serviceInfo, failoverDir);
+                DiskCache.write(serviceInfo, failoverDir); /* 每个ServiceInfo在本地落盘 */
             }
         }
     }

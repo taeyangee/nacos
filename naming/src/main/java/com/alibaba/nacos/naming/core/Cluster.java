@@ -37,20 +37,20 @@ public class Cluster extends com.alibaba.nacos.api.naming.pojo.Cluster implement
     /**
      * a addition for same site routing, can group multiple sites into a region, like Hangzhou, Shanghai, etc.
      */
-    private String sitegroup = StringUtils.EMPTY;
+    private String sitegroup = StringUtils.EMPTY; /* 官网提到的接入点？ https://nacos.io/zh-cn/docs/concepts.html*/
 
     private int defCkport = 80;
 
     private int defIPPort = -1;
 
     @JSONField(serialize = false)
-    private HealthCheckTask checkTask;
+    private HealthCheckTask checkTask; /* 集群的健康检测？*/
 
     @JSONField(serialize = false)
-    private Set<Instance> persistentInstances = new HashSet<>();
+    private Set<Instance> persistentInstances = new HashSet<>();   /* 持久化instance容器*/
 
     @JSONField(serialize = false)
-    private Set<Instance> ephemeralInstances = new HashSet<>();
+    private Set<Instance> ephemeralInstances = new HashSet<>(); /* 临时instance容器*/
 
     @JSONField(serialize = false)
     private Service service;
@@ -103,7 +103,7 @@ public class Cluster extends com.alibaba.nacos.api.naming.pojo.Cluster implement
     }
 
     public void init() {
-        if (inited) {
+        if (inited) { /* 防止cluster*/
             return;
         }
         checkTask = new HealthCheckTask(this);
@@ -183,7 +183,7 @@ public class Cluster extends com.alibaba.nacos.api.naming.pojo.Cluster implement
 
     public void updateIPs(List<Instance> ips, boolean ephemeral) {
 
-        Set<Instance> toUpdateInstances = ephemeral ? ephemeralInstances : persistentInstances;
+        Set<Instance> toUpdateInstances = ephemeral ? ephemeralInstances : persistentInstances; /* 判断 待更新集合 */
 
         HashMap<String, Instance> oldIPMap = new HashMap<>(toUpdateInstances.size());
 
@@ -191,9 +191,9 @@ public class Cluster extends com.alibaba.nacos.api.naming.pojo.Cluster implement
             oldIPMap.put(ip.getDatumKey(), ip);
         }
 
-        List<Instance> updatedIPs = updatedIPs(ips, oldIPMap.values());
+        List<Instance> updatedIPs = updatedIPs(ips, oldIPMap.values()); /*更新实例： copy旧实例的健康值 */
         if (updatedIPs.size() > 0) {
-            for (Instance ip : updatedIPs) {
+            for (Instance ip : updatedIPs) { /* set 这些更新实例的 健康值*/
                 Instance oldIP = oldIPMap.get(ip.getDatumKey());
 
                 // do not update the ip validation status of updated ips
@@ -216,24 +216,24 @@ public class Cluster extends com.alibaba.nacos.api.naming.pojo.Cluster implement
             }
         }
 
-        List<Instance> newIPs = subtract(ips, oldIPMap.values());
+        List<Instance> newIPs = subtract(ips, oldIPMap.values()); /* 新增实例： 重置健健康值*/
         if (newIPs.size() > 0) {
             Loggers.EVT_LOG.info("{} {SYNC} {IP-NEW} cluster: {}, new ips size: {}, content: {}",
                 getService().getName(), getName(), newIPs.size(), newIPs.toString());
 
             for (Instance ip : newIPs) {
-                HealthCheckStatus.reset(ip);
+                HealthCheckStatus.reset(ip); /* 重置健康值 */
             }
         }
 
-        List<Instance> deadIPs = subtract(oldIPMap.values(), ips);
+        List<Instance> deadIPs = subtract(oldIPMap.values(), ips); /* 消亡实例：清除健康值 */
 
         if (deadIPs.size() > 0) {
             Loggers.EVT_LOG.info("{} {SYNC} {IP-DEAD} cluster: {}, dead ips size: {}, content: {}",
                 getService().getName(), getName(), deadIPs.size(), deadIPs.toString());
 
             for (Instance ip : deadIPs) {
-                HealthCheckStatus.remv(ip);
+                HealthCheckStatus.remv(ip); /* 移除健康值 */
             }
         }
 
@@ -246,9 +246,9 @@ public class Cluster extends com.alibaba.nacos.api.naming.pojo.Cluster implement
         }
     }
 
-    public List<Instance> updatedIPs(Collection<Instance> a, Collection<Instance> b) {
+    public List<Instance> updatedIPs(Collection<Instance> a, Collection<Instance> b) { /* 对比新旧集合， 新集合里头：有新增、更新两种实例， 这个函数识别出更新而非新增的实例*/
 
-        List<Instance> intersects = (List<Instance>) CollectionUtils.intersection(a, b);
+        List<Instance> intersects = (List<Instance>) CollectionUtils.intersection(a, b); /* 交集： a 新的全量集合 、 b 原集合 */
         Map<String, Instance> stringIPAddressMap = new ConcurrentHashMap<>(intersects.size());
 
         for (Instance instance : intersects) {

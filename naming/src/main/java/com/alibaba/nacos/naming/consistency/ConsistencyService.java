@@ -18,7 +18,7 @@ package com.alibaba.nacos.naming.consistency;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.naming.pojo.Record;
 
-/**
+/** 一致性协议接口：抽象了 server集群间的数据（包括instance信息）同步
  * Consistence service for all implementations to derive.
  * <p>
  * We announce this consistency service to decouple the specific consistency implementation with business logic.
@@ -60,7 +60,7 @@ public interface ConsistencyService {
     Datum get(String key) throws NacosException;
 
     /**
-     * Listen for changes of a data
+     * Listen for changes of a data  跨进程监听
      *
      * @param key      key of data
      * @param listener callback of data change

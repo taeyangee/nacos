@@ -35,11 +35,11 @@ public class ServiceInfo {
     private String jsonFromServer = EMPTY;
     public static final String SPLITER = "@@";
 
-    private String name;
+    private String name; /* service name*/
 
     private String groupName;
 
-    private String clusters;
+    private String clusters; /*  cluster 列表*/
 
     private long cacheMillis = 1000L;
 
@@ -155,7 +155,7 @@ public class ServiceInfo {
             }
 
             for (int i = 0; i < host.getWeight(); i++) {
-                validHosts.add(host);
+                validHosts.add(host); /* 权重越大， 添加的越多次。 但是validHosts在这里有毛线用？*/
             }
         }
 

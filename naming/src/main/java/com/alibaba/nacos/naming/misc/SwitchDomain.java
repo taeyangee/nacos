@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-/**
+/** SwitchDomain是整个naming的核心开关配置类，几乎所有关键的开关配置信息都在该类中定义。 https://blog.csdn.net/feeltouch/article/details/97576883
  * @author nacos
  */
 @Component
@@ -210,11 +210,11 @@ public class SwitchDomain implements Record, Cloneable {
         this.healthCheckEnabled = healthCheckEnabled;
     }
 
-    public boolean isHealthCheckEnabled(String serviceName) {
+    public boolean isHealthCheckEnabled(String serviceName) { /* 健康检查开启 */
         return healthCheckEnabled || getHealthCheckWhiteList().contains(serviceName);
     }
 
-    public boolean isAutoChangeHealthCheckEnabled() {
+    public boolean isAutoChangeHealthCheckEnabled() { /* 健康检查： 是否是自动开启的 */
         return autoChangeHealthCheckEnabled;
     }
 

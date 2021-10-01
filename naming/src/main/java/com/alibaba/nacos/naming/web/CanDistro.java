@@ -19,7 +19,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 /**
- * Annotation to determine if method should be redirected.
+ * Annotation to determine if method should be redirected.  带有该标记的接口， 如果
  *
  * @author nkorange
  * @since 1.0.0

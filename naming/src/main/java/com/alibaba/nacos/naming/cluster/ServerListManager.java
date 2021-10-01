@@ -46,17 +46,17 @@ public class ServerListManager {
     @Autowired
     private SwitchDomain switchDomain;
 
-    private List<ServerChangeListener> listeners = new ArrayList<>();
+    private List<ServerChangeListener> listeners = new ArrayList<>(); /* node变动监听器 */
 
-    private List<Server> servers = new ArrayList<>();
+    private List<Server> servers = new ArrayList<>(); /* all nodes ： 期望的nodes， cluster.conf里头的配置值*/
 
-    private List<Server> healthyServers = new ArrayList<>();
+    private List<Server> healthyServers = new ArrayList<>(); /* 健康的nodes： 实际在活跃的node */
 
-    private Map<String, List<Server>> distroConfig = new ConcurrentHashMap<>();
+    private Map<String, List<Server>> distroConfig = new ConcurrentHashMap<>(); /* site：猜，是机房等区域概念， 简单里头只有一个UNKNOWN site， 所有server都在UNKOWNd底线*/
 
-    private Map<String, Long> distroBeats = new ConcurrentHashMap<>(16);
+    private Map<String, Long> distroBeats = new ConcurrentHashMap<>(16); /* node(ip+port), 上一次心跳*/
 
-    private Set<String> liveSites = new HashSet<>();
+    private Set<String> liveSites = new HashSet<>(); /* 活跃的机房 */
 
     private final static String LOCALHOST_SITE = UtilsAndCommons.UNKNOWN_SITE;
 
@@ -90,7 +90,7 @@ public class ServerListManager {
 
         List<String> serverList = new ArrayList<>();
         try {
-            serverList = readClusterConf();
+            serverList = readClusterConf(); /* 从 /home/nacos/conf/cluster.conf读取配置 */
         } catch (Exception e) {
             Loggers.SRV_LOG.warn("failed to get config: " + CLUSTER_CONF_FILE_PATH, e);
         }
@@ -100,7 +100,7 @@ public class ServerListManager {
         }
 
         //use system env
-        if (CollectionUtils.isEmpty(serverList)) {
+        if (CollectionUtils.isEmpty(serverList)) { /* 跳过 */
             serverList = SystemUtils.getIPsBySystemEnv(UtilsAndCommons.SELF_SERVICE_CLUSTER_ENV);
             if (Loggers.SRV_LOG.isDebugEnabled()) {
                 Loggers.SRV_LOG.debug("SERVER-LIST from system variable: {}", result);
@@ -194,14 +194,14 @@ public class ServerListManager {
             server.setServePort(Integer.parseInt(params[1].split(UtilsAndCommons.IP_PORT_SPLITER)[1]));
             server.setLastRefTime(Long.parseLong(params[2]));
 
-            if (!contains(server.getKey())) {
+            if (!contains(server.getKey())) { /* 默认server， 还会乱入？ */
                 throw new IllegalArgumentException("server: " + server.getKey() + " is not in serverlist");
             }
 
             Long lastBeat = distroBeats.get(server.getKey());
             long now = System.currentTimeMillis();
             if (null != lastBeat) {
-                server.setAlive(now - lastBeat < switchDomain.getDistroServerExpiredMillis());
+                server.setAlive(now - lastBeat < switchDomain.getDistroServerExpiredMillis());  /* 心跳超期：10s*/
             }
             distroBeats.put(server.getKey(), now);
 
@@ -286,7 +286,7 @@ public class ServerListManager {
         @Override
         public void run() {
             try {
-                List<Server> refreshedServers = refreshServerList();
+                List<Server> refreshedServers = refreshServerList(); /* 从/home/nacos/conf/cluster.conf里头读到最新的配置，基本是不变的 */
                 List<Server> oldServers = servers;
 
                 if (CollectionUtils.isEmpty(refreshedServers)) {
@@ -311,7 +311,7 @@ public class ServerListManager {
                 }
 
                 if (changed) {
-                    notifyListeners();
+                    notifyListeners(); /* 通知本地的ServerListener: DistroMapper、RaftPeerSet*/
                 }
 
             } catch (Exception e) {
@@ -320,7 +320,7 @@ public class ServerListManager {
         }
     }
 
-
+    /* 底部逻辑ServerStatusSynchronizer， 对端接收入口是 onReceiveServerStatus */
     private class ServerStatusReporter implements Runnable {
 
         @Override
@@ -331,9 +331,9 @@ public class ServerListManager {
                     return;
                 }
 
-                checkDistroHeartbeat();
+                checkDistroHeartbeat(); /* 检查cluster node心跳 */
 
-                int weight = Runtime.getRuntime().availableProcessors() / 2;
+                int weight = Runtime.getRuntime().availableProcessors() / 2; /* cpu越多， 能力越好， 权重越高 */
                 if (weight <= 0) {
                     weight = 1;
                 }
@@ -342,11 +342,11 @@ public class ServerListManager {
                 String status = LOCALHOST_SITE + "#" + NetUtils.localServer() + "#" + curTime + "#" + weight + "\r\n";
 
                 //send status to itself
-                onReceiveServerStatus(status);
+                onReceiveServerStatus(status); /* 同步给自己 */
 
                 List<Server> allServers = getServers();
 
-                if (!contains(NetUtils.localServer())) {
+                if (!contains(NetUtils.localServer())) { /* 不再 server列表中， 不用report了 */
                     Loggers.SRV_LOG.error("local ip is not in serverlist, ip: {}, serverlist: {}", NetUtils.localServer(), allServers);
                     return;
                 }
@@ -360,14 +360,14 @@ public class ServerListManager {
                         Message msg = new Message();
                         msg.setData(status);
 
-                        synchronizer.send(server.getKey(), msg);
+                        synchronizer.send(server.getKey(), msg); /* 同步给目标node， 目标node在接收端也是调用了onReceiveServerStatus  ===》 目标node, 本node的状态  */
 
                     }
                 }
             } catch (Exception e) {
                 Loggers.SRV_LOG.error("[SERVER-STATUS] Exception while sending server status", e);
             } finally {
-                GlobalExecutor.registerServerStatusReporter(this, switchDomain.getServerStatusSynchronizationPeriodMillis());
+                GlobalExecutor.registerServerStatusReporter(this, switchDomain.getServerStatusSynchronizationPeriodMillis()); /* 2s*/
             }
 
         }
@@ -377,7 +377,7 @@ public class ServerListManager {
 
         Loggers.SRV_LOG.debug("check distro heartbeat.");
 
-        List<Server> servers = distroConfig.get(LOCALHOST_SITE);
+        List<Server> servers = distroConfig.get(LOCALHOST_SITE); /* 本地机房的 nodes */
         if (CollectionUtils.isEmpty(servers)) {
             return;
         }
@@ -396,13 +396,13 @@ public class ServerListManager {
         List<String> allLocalSiteSrvs = new ArrayList<>();
         for (Server server : servers) {
 
-            if (server.getKey().endsWith(":0")) {
+            if (server.getKey().endsWith(":0")) { /* servePort = 0, 又是什么鬼 */
                 continue;
             }
 
             server.setAdWeight(switchDomain.getAdWeight(server.getKey()) == null ? 0 : switchDomain.getAdWeight(server.getKey()));
 
-            for (int i = 0; i < server.getWeight() + server.getAdWeight(); i++) {
+            for (int i = 0; i < server.getWeight() + server.getAdWeight(); i++) { /* 费解： 这个for有蛋用？ */
 
                 if (!allLocalSiteSrvs.contains(server.getKey())) {
                     allLocalSiteSrvs.add(server.getKey());
@@ -415,35 +415,35 @@ public class ServerListManager {
         }
 
         Collections.sort(newHealthyList);
-        float curRatio = (float) newHealthyList.size() / allLocalSiteSrvs.size();
+        float curRatio = (float) newHealthyList.size() / allLocalSiteSrvs.size(); /* 健康node占比 */
 
-        if (autoDisabledHealthCheck
-            && curRatio > switchDomain.getDistroThreshold()
-            && System.currentTimeMillis() - lastHealthServerMillis > STABLE_PERIOD) {
+        if (autoDisabledHealthCheck /* 健康检查关闭中 */
+            && curRatio > switchDomain.getDistroThreshold() /* 健康node占比 > 0.7， 当前node开启健康检查   */
+            && System.currentTimeMillis() - lastHealthServerMillis > STABLE_PERIOD) { /* 健康检查关闭已经60s */
             Loggers.SRV_LOG.info("[NACOS-DISTRO] distro threshold restored and " +
                 "stable now, enable health check. current ratio: {}", curRatio);
 
-            switchDomain.setHealthCheckEnabled(true);
+            switchDomain.setHealthCheckEnabled(true); /* 重开健康检查 */
 
             // we must set this variable, otherwise it will conflict with user's action
             autoDisabledHealthCheck = false;
         }
 
-        if (!CollectionUtils.isEqualCollection(healthyServers, newHealthyList)) {
+        if (!CollectionUtils.isEqualCollection(healthyServers, newHealthyList)) { /* 新统计的健康node ， 和之前不一样了*/
             // for every change disable healthy check for some while
             Loggers.SRV_LOG.info("[NACOS-DISTRO] healthy server list changed, old: {}, new: {}",
                 healthyServers, newHealthyList);
-            if (switchDomain.isHealthCheckEnabled() && switchDomain.isAutoChangeHealthCheckEnabled()) {
+            if (switchDomain.isHealthCheckEnabled() && switchDomain.isAutoChangeHealthCheckEnabled()) { /* 当前node的健康检查是自动开启的（非人为），  就先关闭60s */
                 Loggers.SRV_LOG.info("[NACOS-DISTRO] disable health check for {} ms from now on.", STABLE_PERIOD);
 
                 switchDomain.setHealthCheckEnabled(false);
-                autoDisabledHealthCheck = true;
+                autoDisabledHealthCheck = true; /* 置位， 可以进到上一个if里头了 */
 
                 lastHealthServerMillis = System.currentTimeMillis();
             }
 
             healthyServers = newHealthyList;
-            notifyListeners();
+            notifyListeners(); /* 通知健康node给 DistroMapper/RaftServer*/
         }
     }
 }

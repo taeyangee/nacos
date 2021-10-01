@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
+/** 健康值管理：所有实例的健康值，在这里管理
  * @author nacos
  */
 public class HealthCheckStatus {
@@ -33,7 +33,7 @@ public class HealthCheckStatus {
     public AtomicInteger checkOKCount = new AtomicInteger(0);
     public long checkRT = -1L;
 
-    private static ConcurrentMap<String, HealthCheckStatus> statusMap = new ConcurrentHashMap<>();
+    private static ConcurrentMap<String, HealthCheckStatus> statusMap = new ConcurrentHashMap<>(); /* 健康值，缓存表 */
 
     public static void reset(Instance instance) {
         statusMap.put(buildKey(instance), new HealthCheckStatus());

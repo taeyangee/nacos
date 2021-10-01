@@ -114,10 +114,10 @@ public class TaskDispatcher {
                     dataSize++;
 
                     if (dataSize == partitionConfig.getBatchSyncKeyCount() ||
-                        (System.currentTimeMillis() - lastDispatchTime) > partitionConfig.getTaskDispatchPeriod()) {
+                        (System.currentTimeMillis() - lastDispatchTime) > partitionConfig.getTaskDispatchPeriod()) {  /* 这里，做了sync任务的合并， 累计2s内的数据更新任务，再同步到其他节点 */
 
                         for (Server member : dataSyncer.getServers()) {
-                            if (NetUtils.localServer().equals(member.getKey())) {
+                            if (NetUtils.localServer().equals(member.getKey())) { /* skip 本server*/
                                 continue;
                             }
                             SyncTask syncTask = new SyncTask();

@@ -35,7 +35,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Data replicator
+ * Data replicator  集群间数据同步
  *
  * @author nkorange
  * @since 1.0.0
@@ -95,13 +95,13 @@ public class DataSyncer {
                 return;
             }
 
-            List<String> keys = task.getKeys();
+            List<String> keys = task.getKeys(); /* 2s内，本地distro可能有若干数据更新了 */
 
             if (Loggers.SRV_LOG.isDebugEnabled()) {
                 Loggers.SRV_LOG.debug("try to sync data for this keys {}.", keys);
             }
             // 2. get the datums by keys and check the datum is empty or not
-            Map<String, Datum> datumMap = dataStore.batchGet(keys);
+            Map<String, Datum> datumMap = dataStore.batchGet(keys); /* 本地数据 */
             if (datumMap == null || datumMap.isEmpty()) {
                 // clear all flags of this task:
                 for (String key : keys) {
@@ -110,11 +110,11 @@ public class DataSyncer {
                 return;
             }
 
-            byte[] data = serializer.serialize(datumMap);
+            byte[] data = serializer.serialize(datumMap); /* 本地数据 做 序列化 */
 
             long timestamp = System.currentTimeMillis();
-            boolean success = NamingProxy.syncData(data, task.getTargetServer());
-            if (!success) {
+            boolean success = NamingProxy.syncData(data, task.getTargetServer()); /* 走网络， 发送出去*/
+            if (!success) { /* 不成功，则重试 */
                 SyncTask syncTask = new SyncTask();
                 syncTask.setKeys(task.getKeys());
                 syncTask.setRetryCount(task.getRetryCount() + 1);
@@ -154,7 +154,7 @@ public class DataSyncer {
         GlobalExecutor.schedulePartitionDataTimedSync(new TimedSync());
     }
 
-    public class TimedSync implements Runnable {
+    public class TimedSync implements Runnable { /* 周期：5s, 同集群node，每个node负责就部分data store向其他node发起校验， 其他node以改node为准， 做校验，或同步改node的这部分数据 */
 
         @Override
         public void run() {
@@ -166,7 +166,7 @@ public class DataSyncer {
                 }
 
                 // send local timestamps to other servers:
-                Map<String, String> keyChecksums = new HashMap<>(64);
+                Map<String, String> keyChecksums = new HashMap<>(64); /* data store里头，每个数据的checksum */
                 for (String key : dataStore.keys()) {
                     if (!distroMapper.responsible(KeyBuilder.getServiceName(key))) {
                         continue;
@@ -191,7 +191,7 @@ public class DataSyncer {
                     if (NetUtils.localServer().equals(member.getKey())) {
                         continue;
                     }
-                    NamingProxy.syncCheckSums(keyChecksums, member.getKey());
+                    NamingProxy.syncCheckSums(keyChecksums, member.getKey()); /* 本地 datastore所有check sum,  同步目标server */
                 }
             } catch (Exception e) {
                 Loggers.DISTRO.error("timed sync task failed.", e);

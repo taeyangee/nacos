@@ -34,7 +34,7 @@ import java.util.List;
 
 /**
  * Check and update statues of ephemeral instances, remove them if they have been expired.
- *
+ * 心跳简检测任务 对节点（临时节点！）做超期移除
  * @author nkorange
  */
 public class ClientBeatCheckTask implements Runnable {
@@ -71,7 +71,7 @@ public class ClientBeatCheckTask implements Runnable {
     @Override
     public void run() {
         try {
-            if (!getDistroMapper().responsible(service.getName())) {
+            if (!getDistroMapper().responsible(service.getName())) { /* 猜：不想对这个service负责？ */
                 return;
             }
 
@@ -83,15 +83,15 @@ public class ClientBeatCheckTask implements Runnable {
 
             // first set health status of instances:
             for (Instance instance : instances) {
-                if (System.currentTimeMillis() - instance.getLastBeat() > instance.getInstanceHeartBeatTimeOut()) {
+                if (System.currentTimeMillis() - instance.getLastBeat() > instance.getInstanceHeartBeatTimeOut()) { /* 超过15s未有心跳*/
                     if (!instance.isMarked()) {
                         if (instance.isHealthy()) {
-                            instance.setHealthy(false);
+                            instance.setHealthy(false);  /* 设置为不健康*/
                             Loggers.EVT_LOG.info("{POS} {IP-DISABLED} valid: {}:{}@{}@{}, region: {}, msg: client timeout after {}, last beat: {}",
                                 instance.getIp(), instance.getPort(), instance.getClusterName(), service.getName(),
                                 UtilsAndCommons.LOCALHOST_SITE, instance.getInstanceHeartBeatTimeOut(), instance.getLastBeat());
-                            getPushService().serviceChanged(service);
-                            SpringContext.getAppContext().publishEvent(new InstanceHeartbeatTimeoutEvent(this, instance));
+                            getPushService().serviceChanged(service); /* 并通告时间 到client*/
+                            SpringContext.getAppContext().publishEvent(new InstanceHeartbeatTimeoutEvent(this, instance)); /* 传播到spc， 没看到有什么组件监听 */
                         }
                     }
                 }
@@ -108,7 +108,7 @@ public class ClientBeatCheckTask implements Runnable {
                     continue;
                 }
 
-                if (System.currentTimeMillis() - instance.getLastBeat() > instance.getIpDeleteTimeout()) {
+                if (System.currentTimeMillis() - instance.getLastBeat() > instance.getIpDeleteTimeout()) { /* 心跳超过30s， 移除 */
                     // delete instance
                     Loggers.SRV_LOG.info("[AUTO-DELETE-IP] service: {}, ip: {}", service.getName(), JSON.toJSONString(instance));
                     deleteIP(instance);
@@ -123,7 +123,7 @@ public class ClientBeatCheckTask implements Runnable {
 
 
     private void deleteIP(Instance instance) {
-
+        /* 自己调用自己的api，什么傻逼？ */
         try {
             NamingProxy.Request request = NamingProxy.Request.newRequest();
             request.appendParam("ip", instance.getIp())

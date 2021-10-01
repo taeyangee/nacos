@@ -60,10 +60,10 @@ public class DistroController {
     @Autowired
     private SwitchDomain switchDomain;
 
-    @PutMapping("/datum")
+    @PutMapping("/datum") /* 对端node， 有外部导入的distro数据变化（应用的注册、注销、心跳、node上心跳检查）， 同步给本地node */
     public ResponseEntity onSyncDatum(@RequestBody Map<String, Datum<Instances>> dataMap) throws Exception {
 
-        if (dataMap.isEmpty()) {
+        if (dataMap.isEmpty()) {  /* 负责处理：对端node上最近更新的distro */
             Loggers.DISTRO.error("[onSync] receive empty entity!");
             throw new NacosException(NacosException.INVALID_PARAM, "receive empty entity!");
         }
@@ -76,20 +76,20 @@ public class DistroController {
                     && switchDomain.isDefaultInstanceEphemeral()) {
                     serviceManager.createEmptyService(namespaceId, serviceName, true);
                 }
-                consistencyService.onPut(entry.getKey(), entry.getValue().value);
+                consistencyService.onPut(entry.getKey(), entry.getValue().value); /* 走本地的 一致性*/
             }
         }
         return ResponseEntity.ok("ok");
     }
 
-    @PutMapping("/checksum")
+    @PutMapping("/checksum")  /* 对端node 发起了部分distro数据的ck检查， 本地node做自查， 同对端node做对其 */
     public ResponseEntity syncChecksum(@RequestParam String source, @RequestBody Map<String, String> dataMap) {
 
         consistencyService.onReceiveChecksums(dataMap, source);
         return ResponseEntity.ok("ok");
     }
 
-    @GetMapping("/datum")
+    @GetMapping("/datum")   /* 对端node，在cksum检查中发现缺漏，找到本地node做数据同步 */
     public ResponseEntity get(@RequestBody JSONObject body) throws Exception {
 
         String keys = body.getString("keys");

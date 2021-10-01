@@ -454,7 +454,7 @@ public class NamingProxy {
         if (servers != null && !servers.isEmpty()) {
 
             Random random = new Random(System.currentTimeMillis());
-            int index = random.nextInt(servers.size());
+            int index = random.nextInt(servers.size()); /* 随机访问一个server */
 
             for (int i = 0; i < servers.size(); i++) {
                 String server = servers.get(index);

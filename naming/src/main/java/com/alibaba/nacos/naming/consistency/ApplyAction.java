@@ -26,5 +26,5 @@ public enum ApplyAction {
     /**
      * Data deleted
      */
-    DELETE
+    DELETE  /* 只看到Raft协议使用了 */
 }

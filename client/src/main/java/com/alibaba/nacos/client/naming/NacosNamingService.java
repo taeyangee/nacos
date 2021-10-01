@@ -62,17 +62,17 @@ public class NacosNamingService implements NamingService {
 
     private String serverList;
 
-    private String cacheDir;
+    private String cacheDir;  /* 猜： 缓存机制：容灾目录，本地缓存，server缓存机制。容灾目录使用需要工具*/
 
     private String logName;
 
-    private HostReactor hostReactor;
+    private HostReactor hostReactor; /* ？？？？？ */
 
-    private BeatReactor beatReactor;
+    private BeatReactor beatReactor;  /* 心跳组件 */
 
-    private EventDispatcher eventDispatcher;
+    private EventDispatcher eventDispatcher; /* 事件分发： 猜：从server订阅到事件，在client本地由改组件做转发 */
 
-    private NamingProxy serverProxy;
+    private NamingProxy serverProxy; /* 通信组件：同server做通信*/
 
     public NacosNamingService(String serverList) {
         Properties properties = new Properties();
@@ -94,7 +94,7 @@ public class NacosNamingService implements NamingService {
 
         eventDispatcher = new EventDispatcher();
         serverProxy = new NamingProxy(namespace, endpoint, serverList, properties);
-        beatReactor = new BeatReactor(serverProxy, initClientBeatThreadCount(properties));
+        beatReactor = new BeatReactor(serverProxy, initClientBeatThreadCount(properties)); /* 核心数量的一般， 心跳处理这么多线程？？？*/
         hostReactor = new HostReactor(eventDispatcher, serverProxy, cacheDir, isLoadCacheAtStart(properties),
             initPollingThreadCount(properties));
     }
@@ -129,7 +129,7 @@ public class NacosNamingService implements NamingService {
     }
 
     private void initServerAddr(Properties properties) {
-        serverList = properties.getProperty(PropertyKeyConst.SERVER_ADDR);
+        serverList = properties.getProperty(PropertyKeyConst.SERVER_ADDR); /* 配置 server集群 */
         endpoint = InitUtils.initEndpoint(properties);
         if (StringUtils.isNotEmpty(endpoint)) {
             serverList = "";
@@ -199,9 +199,9 @@ public class NacosNamingService implements NamingService {
             beatInfo.setWeight(instance.getWeight());
             beatInfo.setMetadata(instance.getMetadata());
             beatInfo.setScheduled(false);
-            beatInfo.setPeriod(instance.getInstanceHeartBeatInterval());
+            beatInfo.setPeriod(instance.getInstanceHeartBeatInterval());  /* 默认 5s一个心跳 */
 
-            beatReactor.addBeatInfo(NamingUtils.getGroupedName(serviceName, groupName), beatInfo);
+            beatReactor.addBeatInfo(NamingUtils.getGroupedName(serviceName, groupName), beatInfo); /* 添加心跳任务，一个instance 一个心跳任务 */
         }
 
         serverProxy.registerService(NamingUtils.getGroupedName(serviceName, groupName), groupName, instance);
@@ -240,7 +240,7 @@ public class NacosNamingService implements NamingService {
 
     @Override
     public void deregisterInstance(String serviceName, String groupName, Instance instance) throws NacosException {
-        if (instance.isEphemeral()) {
+        if (instance.isEphemeral()) { /* 删除心跳任务，一个instance 一个心跳任务 */
             beatReactor.removeBeatInfo(NamingUtils.getGroupedName(serviceName, groupName), instance.getIp(), instance.getPort());
         }
         serverProxy.deregisterService(NamingUtils.getGroupedName(serviceName, groupName), instance);
@@ -285,10 +285,10 @@ public class NacosNamingService implements NamingService {
     @Override
     public List<Instance> getAllInstances(String serviceName, String groupName, List<String> clusters, boolean subscribe) throws NacosException {
 
-        ServiceInfo serviceInfo;
-        if (subscribe) {
+        ServiceInfo serviceInfo; /* spc-ali走的订阅模式*/
+        if (subscribe) { /* 订阅模式：client订阅server，服务信息会 准实时 同步到client， 这里查询的时候，直接看缓存 */
             serviceInfo = hostReactor.getServiceInfo(NamingUtils.getGroupedName(serviceName, groupName), StringUtils.join(clusters, ","));
-        } else {
+        } else { /* 直接从server端请求最新的client数据：api打一下就结束了 */
             serviceInfo = hostReactor.getServiceInfoDirectlyFromServer(NamingUtils.getGroupedName(serviceName, groupName), StringUtils.join(clusters, ","));
         }
         List<Instance> list;

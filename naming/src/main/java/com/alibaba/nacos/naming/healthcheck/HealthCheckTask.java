@@ -50,7 +50,7 @@ public class HealthCheckTask implements Runnable {
     @JSONField(serialize = false)
     private HealthCheckProcessor healthCheckProcessor;
 
-    public HealthCheckTask(Cluster cluster) {
+    public HealthCheckTask(Cluster cluster) { /*  集群的 健康检测 */
         this.cluster = cluster;
         distroMapper = SpringContext.getAppContext().getBean(DistroMapper.class);
         switchDomain = SpringContext.getAppContext().getBean(SwitchDomain.class);

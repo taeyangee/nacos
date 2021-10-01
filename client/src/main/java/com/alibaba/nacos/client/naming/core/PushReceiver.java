@@ -70,7 +70,7 @@ public class PushReceiver implements Runnable {
                 byte[] buffer = new byte[UDP_MSS];
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
-                udpSocket.receive(packet);
+                udpSocket.receive(packet); /* 接收 server推动的报文， 最新的instance注册表？ */
 
                 String json = new String(IoUtils.tryDecompress(packet.getData()), "UTF-8").trim();
                 NAMING_LOGGER.info("received push data: " + json + " from " + packet.getAddress().toString());
@@ -78,7 +78,7 @@ public class PushReceiver implements Runnable {
                 PushPacket pushPacket = JSON.parseObject(json, PushPacket.class);
                 String ack;
                 if ("dom".equals(pushPacket.type) || "service".equals(pushPacket.type)) {
-                    hostReactor.processServiceJSON(pushPacket.data);
+                    hostReactor.processServiceJSON(pushPacket.data); /**/
 
                     // send ack to server
                     ack = "{\"type\": \"push-ack\""

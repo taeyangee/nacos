@@ -28,14 +28,14 @@ import com.alibaba.nacos.naming.push.PushService;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-/**
+/** 临时实例的心跳处理
  * Thread to update ephemeral instance triggered by client beat
  *
  * @author nkorange
  */
 public class ClientBeatProcessor implements Runnable {
     public static final long CLIENT_BEAT_TIMEOUT = TimeUnit.SECONDS.toMillis(15);
-    private RsInfo rsInfo;
+    private RsInfo rsInfo; /* instance 转换得来的*/
     private Service service;
 
     @JSONField(serialize = false)
@@ -77,13 +77,13 @@ public class ClientBeatProcessor implements Runnable {
                 if (Loggers.EVT_LOG.isDebugEnabled()) {
                     Loggers.EVT_LOG.debug("[CLIENT-BEAT] refresh beat: {}", rsInfo.toString());
                 }
-                instance.setLastBeat(System.currentTimeMillis());
+                instance.setLastBeat(System.currentTimeMillis()); /* 更新心跳时间戳 */
                 if (!instance.isMarked()) {
                     if (!instance.isHealthy()) {
-                        instance.setHealthy(true);
+                        instance.setHealthy(true); /* 恢复健康 */
                         Loggers.EVT_LOG.info("service: {} {POS} {IP-ENABLED} valid: {}:{}@{}, region: {}, msg: client beat ok",
                             cluster.getService().getName(), ip, port, cluster.getName(), UtilsAndCommons.LOCALHOST_SITE);
-                        getPushService().serviceChanged(service);
+                        getPushService().serviceChanged(service); /* push 到关心该service的client，健康状态变更 */
                     }
                 }
             }

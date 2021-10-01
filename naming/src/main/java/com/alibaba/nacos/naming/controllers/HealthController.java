@@ -46,7 +46,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
+/** 和主要业务没啥关系的样子
  * Health status related operation controller
  *
  * @author nkorange

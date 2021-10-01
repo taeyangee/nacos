@@ -46,7 +46,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.servlet.http.HttpServletRequest;
 import java.util.*;
 
-/**
+/** 这个controller主要是console查询用
  * @author nkorange
  */
 @RestController

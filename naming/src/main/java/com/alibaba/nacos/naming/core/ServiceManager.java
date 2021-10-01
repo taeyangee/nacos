@@ -62,7 +62,7 @@ public class ServiceManager implements RecordListener<Service> {
     /**
      * Map<namespace, Map<group::serviceName, Service>>
      */
-    private Map<String, Map<String, Service>> serviceMap = new ConcurrentHashMap<>();
+    private Map<String, Map<String, Service>> serviceMap = new ConcurrentHashMap<>(); /* 核心结果： service 注册表 */
 
     private LinkedBlockingDeque<ServiceKey> toBeUpdatedServicesQueue = new LinkedBlockingDeque<>(1024 * 1024);
 
@@ -430,7 +430,7 @@ public class ServiceManager implements RecordListener<Service> {
             service.setGroupName(NamingUtils.getGroupName(serviceName));
             // now validate the service. if failed, exception will be thrown
             service.setLastModifiedMillis(System.currentTimeMillis());
-            service.recalculateChecksum();
+            service.recalculateChecksum(); /* 拿所有 instance的ip重新算了 checksum*/
             if (cluster != null) {
                 cluster.setService(service);
                 service.getClusterMap().put(cluster.getName(), cluster);
@@ -438,7 +438,7 @@ public class ServiceManager implements RecordListener<Service> {
             service.validate();
 
             putServiceAndInit(service);
-            if (!local) {
+            if (!local) {  /* local即临时节点，不做持久化，只在本地。 临时节点，走不进去，先不看*/
                 addOrReplaceService(service);
             }
         }
@@ -456,7 +456,7 @@ public class ServiceManager implements RecordListener<Service> {
      */
     public void registerInstance(String namespaceId, String serviceName, Instance instance) throws NacosException {
 
-        createEmptyService(namespaceId, serviceName, instance.isEphemeral());
+        createEmptyService(namespaceId, serviceName, instance.isEphemeral()); /* service如果为空， 就先创建一下 service->cluster 都会初始化，建立起instance心跳检测、cluster健康检测 */
 
         Service service = getService(namespaceId, serviceName);
 
@@ -491,12 +491,12 @@ public class ServiceManager implements RecordListener<Service> {
         Service service = getService(namespaceId, serviceName);
 
         synchronized (service) {
-            List<Instance> instanceList = addIpAddresses(service, ephemeral, ips);
+            List<Instance> instanceList = addIpAddresses(service, ephemeral, ips); /* 添加服务实例 */
 
             Instances instances = new Instances();
-            instances.setInstanceList(instanceList);
+            instances.setInstanceList(instanceList); /* new一个服务实例集合*/
 
-            consistencyService.put(key, instances);
+            consistencyService.put(key, instances); /* 服务实例集合， 由底层一致性协议做支持在server集群内完成同步、由事件机制做支持在本地 通告 实例注册事件*/
         }
     }
 
@@ -512,7 +512,7 @@ public class ServiceManager implements RecordListener<Service> {
 
         String key = KeyBuilder.buildInstanceListKey(namespaceId, serviceName, ephemeral);
 
-        List<Instance> instanceList = substractIpAddresses(service, ephemeral, ips);
+        List<Instance> instanceList = substractIpAddresses(service, ephemeral, ips); /* 移除ips之后的实例集合*/
 
         Instances instances = new Instances();
         instances.setInstanceList(instanceList);
@@ -547,24 +547,24 @@ public class ServiceManager implements RecordListener<Service> {
 
         Datum datum = consistencyService.get(KeyBuilder.buildInstanceListKey(service.getNamespaceId(), service.getName(), ephemeral));
 
-        List<Instance> currentIPs = service.allIPs(ephemeral);
-        Map<String, Instance> currentInstances = new HashMap<>(currentIPs.size());
-        Set<String> currentInstanceIds = Sets.newHashSet();
+        List<Instance> currentIPs = service.allIPs(ephemeral); /* 内存中的所有 临时instance*/
+        Map<String, Instance> currentInstances = new HashMap<>(currentIPs.size()); /* Map<ip, instance>*/
+        Set<String> currentInstanceIds = Sets.newHashSet(); /* currentIPs 根据 instance id去重*/
 
         for (Instance instance : currentIPs) {
             currentInstances.put(instance.toIPAddr(), instance);
-            currentInstanceIds.add(instance.getInstanceId());
+            currentInstanceIds.add(instance.getInstanceId()); /**/
         }
 
         Map<String, Instance> instanceMap;
         if (datum != null) {
-            instanceMap = setValid(((Instances) datum.value).getInstanceList(), currentInstances);
+            instanceMap = setValid(((Instances) datum.value).getInstanceList(), currentInstances); /* consistencyService中有临时instance 就要一起带上， 不知道这块是干嘛？*/
         } else {
             instanceMap = new HashMap<>(ips.length);
         }
 
-        for (Instance instance : ips) {
-            if (!service.getClusterMap().containsKey(instance.getClusterName())) {
+        for (Instance instance : ips) { /* 待更新的 instance */
+            if (!service.getClusterMap().containsKey(instance.getClusterName())) { /* 没有就new出对应的cluster，并初始化cluster*/
                 Cluster cluster = new Cluster(instance.getClusterName(), service);
                 cluster.init();
                 service.getClusterMap().put(instance.getClusterName(), cluster);
@@ -574,8 +574,8 @@ public class ServiceManager implements RecordListener<Service> {
 
             if (UtilsAndCommons.UPDATE_INSTANCE_ACTION_REMOVE.equals(action)) {
                 instanceMap.remove(instance.getDatumKey());
-            } else {
-                instance.setInstanceId(instance.generateInstanceId(currentInstanceIds));
+            } else { /* 注册， action = add */
+                instance.setInstanceId(instance.generateInstanceId(currentInstanceIds)); /* 给instance生成一个id*/
                 instanceMap.put(instance.getDatumKey(), instance);
             }
 
@@ -634,10 +634,10 @@ public class ServiceManager implements RecordListener<Service> {
     }
 
     private void putServiceAndInit(Service service) throws NacosException {
-        putService(service);
-        service.init();
-        consistencyService.listen(KeyBuilder.buildInstanceListKey(service.getNamespaceId(), service.getName(), true), service);
-        consistencyService.listen(KeyBuilder.buildInstanceListKey(service.getNamespaceId(), service.getName(), false), service);
+        putService(service); /* service 放入核心结构*/
+        service.init(); /* service 初始化： 启动client心跳检测（在service级别？），初始化下属cluster*/
+        consistencyService.listen(KeyBuilder.buildInstanceListKey(service.getNamespaceId(), service.getName(), true), service); /* service 监听consistencyService 数据变动 */
+        consistencyService.listen(KeyBuilder.buildInstanceListKey(service.getNamespaceId(), service.getName(), false), service); /* service 监听consistencyService 数据变动 */
         Loggers.SRV_LOG.info("[NEW-SERVICE] {}", service.toJSON());
     }
 

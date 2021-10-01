@@ -40,7 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 
-/**
+/**  web调用的
  * @author nkorange
  */
 @RestController

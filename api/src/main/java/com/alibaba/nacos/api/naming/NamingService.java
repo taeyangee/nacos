@@ -26,7 +26,7 @@ import java.util.List;
 
 /**
  * Naming Service
- *
+ * 服务发现client：提供服务注册与注销、服务发现、服务监听与取消监听
  * @author nkorange
  */
 public interface NamingService {

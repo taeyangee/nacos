@@ -54,7 +54,7 @@ public class ServerStatusManager {
             return;
         }
 
-        if (consistencyService.isAvailable()) {
+        if (consistencyService.isAvailable()) { /* distro & raft 都可用， 才可用 */
             serverStatus = ServerStatus.UP;
         } else {
             serverStatus = ServerStatus.DOWN;

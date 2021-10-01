@@ -36,7 +36,7 @@ public class Cluster {
     private String name;
 
     /**
-     * Health check config of this cluster
+     * Health check config of this cluster  虚拟集群的健康检测
      */
     private AbstractHealthChecker healthChecker = new AbstractHealthChecker.Tcp();
 

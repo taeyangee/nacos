@@ -36,7 +36,7 @@ import java.util.List;
 @Component("distroMapper")
 public class DistroMapper implements ServerChangeListener {
 
-    private List<String> healthyList = new ArrayList<>();
+    private List<String> healthyList = new ArrayList<>(); /* */
 
     public List<String> getHealthyList() {
         return healthyList;
@@ -56,14 +56,14 @@ public class DistroMapper implements ServerChangeListener {
         serverListManager.listen(this);
     }
 
-    public boolean responsible(Cluster cluster, Instance instance) {
+    public boolean responsible(Cluster cluster, Instance instance) {  /* 判断一下：入参的注册信息，是不是当前集群该负责的 */
         return switchDomain.isHealthCheckEnabled(cluster.getServiceName())
             && !cluster.getHealthCheckTask().isCancelled()
             && responsible(cluster.getServiceName())
             && cluster.contains(instance);
     }
 
-    public boolean responsible(String serviceName) {
+    public boolean responsible(String serviceName) { /* 判断一下：入参的注册信息，是不是当前集群该负责的 */
         if (!switchDomain.isDistroEnabled() || SystemUtils.STANDALONE_MODE) {
             return true;
         }
@@ -76,9 +76,9 @@ public class DistroMapper implements ServerChangeListener {
         int index = healthyList.indexOf(NetUtils.localServer());
         int lastIndex = healthyList.lastIndexOf(NetUtils.localServer());
         if (lastIndex < 0 || index < 0) {
-            return true;
+            return true;  /* 因为当前节点不健康， 所以更需要同步？ */
         }
-
+        /* healthyList是从ServerListManager过来的， 猜：是想实现基于权重的node，node权重越大，负责的service越多。但是 healthyList还有支持到权重的方式  */
         int target = distroHash(serviceName) % healthyList.size();
         return target >= index && target <= lastIndex;
     }
@@ -113,6 +113,6 @@ public class DistroMapper implements ServerChangeListener {
         for (Server server : latestReachableMembers) {
             newHealthyList.add(server.getKey());
         }
-        healthyList = newHealthyList;
+        healthyList = newHealthyList;  /* 监听， 同步最新的、健康的集群节点, 从ServerListManager过来的 */
     }
 }

@@ -24,7 +24,7 @@ import com.alibaba.nacos.naming.misc.UtilsAndCommons;
  * @author nkorange
  * @since 1.0.0
  */
-public class Server implements Comparable<Server> {
+public class Server implements Comparable<Server> { /* nacos集群节点 */
 
     /**
      * IP of member
@@ -36,7 +36,7 @@ public class Server implements Comparable<Server> {
      */
     private int servePort;
 
-    private String site = UtilsAndCommons.UNKNOWN_SITE;
+    private String site = UtilsAndCommons.UNKNOWN_SITE; /* 猜： site可能是机房、地域等高纬度的概念 */
 
     private int weight = 1;
 
@@ -45,7 +45,7 @@ public class Server implements Comparable<Server> {
      */
     private int adWeight;
 
-    private boolean alive = false;
+    private boolean alive = false;  /* 心跳，10s保活*/
 
     private long lastRefTime = 0L;
 

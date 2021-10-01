@@ -41,6 +41,7 @@ public enum ServerMode {
      * CP mode
      */
     CP,
+
     /**
      * Mixed mode
      */

@@ -187,7 +187,7 @@ public class RaftCore {
 
             final CountDownLatch latch = new CountDownLatch(peers.majorityCount());
             for (final String server : peers.allServersIncludeMyself()) {
-                if (isLeader(server)) {
+                if (isLeader(server)) { /*  lead自己， 通过*/
                     latch.countDown();
                     continue;
                 }

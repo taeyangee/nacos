@@ -17,7 +17,7 @@ package com.alibaba.nacos.naming.cluster.servers;
 
 import java.util.List;
 
-/**
+/** server集群监听器： RaftPeerSet、DistroMapper实现了集群node监听
  * Nacos cluster member change event listener
  *
  * @author nkorange

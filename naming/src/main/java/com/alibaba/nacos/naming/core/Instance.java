@@ -40,7 +40,7 @@ public class Instance extends com.alibaba.nacos.api.naming.pojo.Instance impleme
     private static final double MIN_POSITIVE_WEIGHT_VALUE = 0.01D;
     private static final double MIN_WEIGHT_VALUE = 0.00D;
 
-    private volatile long lastBeat = System.currentTimeMillis();
+    private volatile long lastBeat = System.currentTimeMillis(); /* 最近的心跳 */
 
     @JSONField(serialize = false)
     private volatile boolean mockValid = false;

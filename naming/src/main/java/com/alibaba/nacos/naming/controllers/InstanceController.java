@@ -63,7 +63,7 @@ public class InstanceController {
     private SwitchDomain switchDomain;
 
     @Autowired
-    private PushService pushService;
+    private PushService pushService; /* 在推送什么？？？？？ ===> 配合client做服务注册信息的准实时同步 */
 
     @Autowired
     private ServiceManager serviceManager;
@@ -262,7 +262,7 @@ public class InstanceController {
 
         JSONObject result = new JSONObject();
 
-        result.put("clientBeatInterval", switchDomain.getClientBeatInterval());
+        result.put("clientBeatInterval", switchDomain.getClientBeatInterval()); /* 下次心跳周期： 5s*/
         String serviceName = WebUtils.required(request, CommonParams.SERVICE_NAME);
         String namespaceId = WebUtils.optional(request, CommonParams.NAMESPACE_ID,
             Constants.DEFAULT_NAMESPACE_ID);
@@ -274,7 +274,7 @@ public class InstanceController {
 
         RsInfo clientBeat = null;
         if (StringUtils.isNotBlank(beat)) {
-            clientBeat = JSON.parseObject(beat, RsInfo.class);
+            clientBeat = JSON.parseObject(beat, RsInfo.class); /* 费解： client的beatInfo 在这里转成了 RSinfo*/
         }
 
         if (clientBeat != null) {
@@ -289,14 +289,14 @@ public class InstanceController {
             Loggers.SRV_LOG.debug("[CLIENT-BEAT] full arguments: beat: {}, serviceName: {}", clientBeat, serviceName);
         }
 
-        Instance instance = serviceManager.getInstance(namespaceId, serviceName, clusterName, ip, port);
+        Instance instance = serviceManager.getInstance(namespaceId, serviceName, clusterName, ip, port); /* 找到实例: 五元素直接定位*/
 
-        if (instance == null) {
+        if (instance == null) { /* 注册表里头没有实例， 就注册或者让client发起注册 */
             if (clientBeat == null) {
-                result.put(CommonParams.CODE, NamingResponseCode.RESOURCE_NOT_FOUND);
+                result.put(CommonParams.CODE, NamingResponseCode.RESOURCE_NOT_FOUND); /* 返回， client会重新发起注册 */
                 return result;
             }
-            instance = new Instance();
+            instance = new Instance(); /* 信息足够， 直接注册， 减少网络通信。  同时， 这种偏重的心跳设计，让不可用的事件变短了，提升了可用性（参考徐锦芬的剥壳 ） */
             instance.setPort(clientBeat.getPort());
             instance.setIp(clientBeat.getIp());
             instance.setWeight(clientBeat.getWeight());
@@ -321,7 +321,7 @@ public class InstanceController {
             clientBeat.setPort(port);
             clientBeat.setCluster(clusterName);
         }
-        service.processClientBeat(clientBeat);
+        service.processClientBeat(clientBeat); /* 异步处理心跳：投递ClientBeatProcessor 到线程中*/
 
         result.put(CommonParams.CODE, NamingResponseCode.OK);
         result.put("clientBeatInterval", instance.getInstanceHeartBeatInterval());
@@ -430,7 +430,7 @@ public class InstanceController {
                                 String env, boolean isCheck, String app, String tid, boolean healthyOnly)
         throws Exception {
 
-        ClientInfo clientInfo = new ClientInfo(agent);
+        ClientInfo clientInfo = new ClientInfo(agent); /* 识别client版本 */
         JSONObject result = new JSONObject();
         Service service = serviceManager.getService(namespaceId, serviceName);
 
@@ -444,18 +444,18 @@ public class InstanceController {
             return result;
         }
 
-        checkIfDisabled(service);
+        checkIfDisabled(service); /* 服务不可用， 就抛异常*/
 
         long cacheMillis = switchDomain.getDefaultCacheMillis();
 
         // now try to enable the push
         try {
-            if (udpPort > 0 && pushService.canEnablePush(agent)) {
+            if (udpPort > 0 && pushService.canEnablePush(agent)) { /* udp > 0 && client版本支持推送，则要创建实时推送*/
 
                 pushService.addClient(namespaceId, serviceName,
                     clusters,
                     agent,
-                    new InetSocketAddress(clientIP, udpPort),
+                    new InetSocketAddress(clientIP, udpPort), /* 给client推送功能， 创建udp端口*/
                     pushDataSource,
                     tid,
                     app);
@@ -468,9 +468,9 @@ public class InstanceController {
 
         List<Instance> srvedIPs;
 
-        srvedIPs = service.srvIPs(Arrays.asList(StringUtils.split(clusters, ",")));
+        srvedIPs = service.srvIPs(Arrays.asList(StringUtils.split(clusters, ","))); /* 串行化一下 clusters里头所有的instance*/
 
-        // filter ips using selector:
+        // filter ips using selector:  为什么要filter， Lableselector有注释了场景。 暂时用不上， 略
         if (service.getSelector() != null && StringUtils.isNotBlank(clientIP)) {
             srvedIPs = service.getSelector().select(clientIP, srvedIPs);
         }
@@ -499,7 +499,7 @@ public class InstanceController {
             result.put("metadata", service.getMetadata());
             return result;
         }
-
+        /* 这一块，阈值保护机制有关：简单说就是， server觉得所有实例都不健康了，这时候往往是server自己傻逼了，这时候就不能相应server了。还是要返回instance给client */
         Map<Boolean, List<Instance>> ipMap = new HashMap<>(2);
         ipMap.put(Boolean.TRUE, new ArrayList<>());
         ipMap.put(Boolean.FALSE, new ArrayList<>());
@@ -514,7 +514,7 @@ public class InstanceController {
 
         double threshold = service.getProtectThreshold();
 
-        if ((float) ipMap.get(Boolean.TRUE).size() / srvedIPs.size() <= threshold) {
+        if ((float) ipMap.get(Boolean.TRUE).size() / srvedIPs.size() <= threshold) { /* 健康的实例数 低于 保护阈值， 返回所有实例 */
 
             Loggers.SRV_LOG.warn("protect threshold reached, return all ips, service: {}", serviceName);
             if (isCheck) {
@@ -529,7 +529,7 @@ public class InstanceController {
             result.put("protectThreshold", service.getProtectThreshold());
             result.put("reachLocalSiteCallThreshold", false);
 
-            return new JSONObject();
+            return new JSONObject(); /* 返回了个寂寞？ */
         }
 
         JSONArray hosts = new JSONArray();
@@ -574,7 +574,7 @@ public class InstanceController {
             }
         }
 
-        result.put("hosts", hosts);
+        result.put("hosts", hosts); /* 服务注册信息的主体 */
         if (clientInfo.type == ClientInfo.ClientType.JAVA &&
             clientInfo.version.compareTo(VersionUtil.parseVersion("1.0.0")) >= 0) {
             result.put("dom", serviceName);
@@ -582,8 +582,8 @@ public class InstanceController {
             result.put("dom", NamingUtils.getServiceName(serviceName));
         }
         result.put("name", serviceName);
-        result.put("cacheMillis", cacheMillis);
-        result.put("lastRefTime", System.currentTimeMillis());
+        result.put("cacheMillis", cacheMillis); /* 当前查询结果的有效缓存时间。 client根据该字段重置拉取任务，默认值10s*/
+        result.put("lastRefTime", System.currentTimeMillis()); /* 响应时间戳 */
         result.put("checksum", service.getChecksum());
         result.put("useSpecifiedURL", false);
         result.put("clusters", clusters);

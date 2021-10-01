@@ -70,8 +70,8 @@ public class BeatReactor {
         if ((existBeat = dom2Beat.remove(key)) != null) {
             existBeat.setStopped(true);
         }
-        dom2Beat.put(key, beatInfo);
-        executorService.schedule(new BeatTask(beatInfo), beatInfo.getPeriod(), TimeUnit.MILLISECONDS);
+        dom2Beat.put(key, beatInfo); /* metric用，可以跳过  */
+        executorService.schedule(new BeatTask(beatInfo), beatInfo.getPeriod(), TimeUnit.MILLISECONDS); /* 默认周期：5s*/
         MetricsMonitor.getDom2BeatSizeMonitor().set(dom2Beat.size());
     }
 
@@ -105,13 +105,13 @@ public class BeatReactor {
             }
             long nextTime = beatInfo.getPeriod();
             try {
-                JSONObject result = serverProxy.sendBeat(beatInfo, BeatReactor.this.lightBeatEnabled);
+                JSONObject result = serverProxy.sendBeat(beatInfo, BeatReactor.this.lightBeatEnabled); /* 网络通信   /ns/instance/beat*/
                 long interval = result.getIntValue("clientBeatInterval");
                 boolean lightBeatEnabled = false;
                 if (result.containsKey(CommonParams.LIGHT_BEAT_ENABLED)) {
                     lightBeatEnabled = result.getBooleanValue(CommonParams.LIGHT_BEAT_ENABLED);
                 }
-                BeatReactor.this.lightBeatEnabled = lightBeatEnabled;
+                BeatReactor.this.lightBeatEnabled = lightBeatEnabled;  /* 调整网络通信节奏? */
                 if (interval > 0) {
                     nextTime = interval;
                 }
@@ -119,7 +119,7 @@ public class BeatReactor {
                 if (result.containsKey(CommonParams.CODE)) {
                     code = result.getIntValue(CommonParams.CODE);
                 }
-                if (code == NamingResponseCode.RESOURCE_NOT_FOUND) {
+                if (code == NamingResponseCode.RESOURCE_NOT_FOUND) { /* 远端没有这个实例的消息了， 重新注册*/
                     Instance instance = new Instance();
                     instance.setPort(beatInfo.getPort());
                     instance.setIp(beatInfo.getIp());
@@ -140,7 +140,7 @@ public class BeatReactor {
                     JSON.toJSONString(beatInfo), ne.getErrCode(), ne.getErrMsg());
 
             }
-            executorService.schedule(new BeatTask(beatInfo), nextTime, TimeUnit.MILLISECONDS);
+            executorService.schedule(new BeatTask(beatInfo), nextTime, TimeUnit.MILLISECONDS); /* 投递下一个周期任务*/
         }
     }
 }
